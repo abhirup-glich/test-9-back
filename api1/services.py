@@ -54,61 +54,59 @@ class AdminService:
             abort(500, message="Failed to fetch attendance")
 
     @staticmethod
-
     def register_student(data):
-    
-    # Ensure Supabase client is initialized (AdminService._require_supabase() is assumed to handle this)
-            AdminService._require_supabase()
-    
-    # Standardize inputs to prevent trailing spaces or casing issues
-            roll_number = data['roll'].strip()
-            email = data['email'].strip().lower()
-    
-            try:
-        # --- 1. PRE-INSERT VALIDATION ---
+        # Ensure Supabase client is initialized
+        AdminService._require_supabase()
         
-        # Check 1: Duplicate Roll Number (Database column: 'roll_number')
-        # This prevents a duplicate key error on the UNIQUE roll_number column.
-                 check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
-                 if check_uid.data:
-                        abort(409, message=f"Roll number {roll_number} is already registered.")
+        # Standardize inputs to prevent trailing spaces or casing issues
+        roll_number = data['roll'].strip()
+        email = data['email'].strip().lower()
+        
+        try:
+            # --- 1. PRE-INSERT VALIDATION ---
+            
+            # Check 1: Duplicate Roll Number (Database column: 'roll_number')
+            # This prevents a duplicate key error on the UNIQUE roll_number column.
+            check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
+            if check_uid.data:
+                abort(409, message=f"Roll number {roll_number} is already registered.")
 
-        # Check 2: Duplicate Email (Database column: 'email')
-        # This prevents a duplicate key error on the UNIQUE email column.
-                 existing = supabase.table('students').select('id').eq('email', email).execute()
-                 if existing.data:
-                        abort(409, message=f"Email {email} is already registered.")
+            # Check 2: Duplicate Email (Database column: 'email')
+            # This prevents a duplicate key error on the UNIQUE email column.
+            existing = supabase.table('students').select('id').eq('email', email).execute()
+            if existing.data:
+                abort(409, message=f"Email {email} is already registered.")
 
-        # --- 2. PREPARE DATA ---
+            # --- 2. PREPARE DATA ---
 
-        # Hash the password using the imported function
-                 hashed_password = generate_password_hash(data['password'])
-        
-                 student_data = {
-                    'name': data['name'],
-                    'course': data.get('course', ''),
-                    'email': email,
-                    'roll_number': roll_number, 
-                    'password': hashed_password # CORRECTED: Uses the definitive column name 'password'
-                  }
+            # Hash the password using the imported function
+            hashed_password = generate_password_hash(data['password'])
+            
+            student_data = {
+                'name': data['name'],
+                'course': data.get('course', ''),
+                'email': email,
+                'roll_number': roll_number, 
+                'password': hashed_password # Uses the definitive column name 'password'
+            }
 
-        # --- 3. EXECUTE INSERTION ---
+            # --- 3. EXECUTE INSERTION ---
+            
+            # Insert data into the 'students' table
+            response = supabase.table('students').insert(student_data).execute()
+            
+            # Return the inserted record data
+            return response.data[0] if response.data else student_data
         
-        # Insert data into the 'students' table
-                  response = supabase.table('students').insert(student_data).execute()
-        
-        # Return the inserted record data
-                  return response.data[0] if response.data else student_data
-    
-            except HTTPException:
-        # Re-raise explicit HTTP errors (409 Conflict)
-                       raise
-        
-            except Exception as e:
-        # Catch any remaining unexpected server or database errors
-                       print(f"FATAL Error registering student: {e}")
-        # Return the generic 500 error seen in your client image
-                       abort(500, message="Failed to register student due to an unexpected server error.")
+        except HTTPException:
+            # Re-raise explicit HTTP errors (409 Conflict)
+            raise
+            
+        except Exception as e:
+            # Catch any remaining unexpected server or database errors
+            print(f"FATAL Error registering student: {e}")
+            # Return the generic 500 error seen in your client image
+            abort(500, message="Failed to register student due to an unexpected server error.")
 
     @staticmethod
     def update_student(student_id, data):
@@ -129,9 +127,11 @@ class AdminService:
 
         if "email" in update_data:
             try:
+                # Retained original logic: try roll_number first
                 existing = supabase.table('students').select('id,roll_number').eq('email', update_data["email"]).execute()
                 field_to_check = 'roll_number'
             except Exception:
+                # Retained original logic: fallback to unique_id
                 existing = supabase.table('students').select('id,unique_id').eq('email', update_data["email"]).execute()
                 field_to_check = 'unique_id'
 
@@ -194,7 +194,7 @@ class AdminService:
             # Handle both FileStorage (legacy) and direct stream
             if hasattr(file_or_stream, 'filename') and filename is None:
                 filename = file_or_stream.filename
-            
+                
             if not filename:
                 filename = "unknown_video.webm"
 
@@ -219,7 +219,7 @@ class AdminService:
                 "data": result_data
             }
         except Exception as e:
-             if isinstance(e, HTTPException):
-                 raise
-             print(f"Error processing video: {e}")
-             abort(500, message="Video processing failed")
+            if isinstance(e, HTTPException):
+                raise
+            print(f"Error processing video: {e}")
+            abort(500, message="Video processing failed")
