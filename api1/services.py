@@ -30,10 +30,8 @@ class AdminService:
         try:
             response = supabase.table('students').select("*").execute()
             students = response.data
-            # Backwards compatibility: map unique_id to roll_number
-            for s in students:
-                if 'roll_number' not in s and 'unique_id' in s:
-                    s['roll_number'] = s['unique_id']
+            # NOTE: Removed the obsolete 'unique_id' to 'roll_number' mapping.
+            # The database now exclusively uses 'roll_number'.
             return students
         except Exception as e:
             if isinstance(e, HTTPException):
@@ -45,6 +43,7 @@ class AdminService:
     def check_attendance():
         AdminService._require_supabase()
         try:
+            # NOTE: This uses 'attendance' table which references students via 'student_id'
             response = supabase.table('attendance').select("*").order('time', desc=True).execute()
             return response.data
         except Exception as e:
@@ -55,10 +54,11 @@ class AdminService:
 
     @staticmethod
     def register_student(data):
-        # Ensure Supabase client is initialized
+        """
+        Registers a new student. Uses roll_number and password keys, aligned with the database.
+        """
         AdminService._require_supabase()
         
-        # Standardize inputs to prevent trailing spaces or casing issues
         roll_number = data['roll'].strip()
         email = data['email'].strip().lower()
         
@@ -66,20 +66,17 @@ class AdminService:
             # --- 1. PRE-INSERT VALIDATION ---
             
             # Check 1: Duplicate Roll Number (Database column: 'roll_number')
-            # This prevents a duplicate key error on the UNIQUE roll_number column.
             check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
             if check_uid.data:
                 abort(409, message=f"Roll number {roll_number} is already registered.")
 
             # Check 2: Duplicate Email (Database column: 'email')
-            # This prevents a duplicate key error on the UNIQUE email column.
             existing = supabase.table('students').select('id').eq('email', email).execute()
             if existing.data:
                 abort(409, message=f"Email {email} is already registered.")
 
             # --- 2. PREPARE DATA ---
 
-            # Hash the password using the imported function
             hashed_password = generate_password_hash(data['password'])
             
             student_data = {
@@ -92,20 +89,15 @@ class AdminService:
 
             # --- 3. EXECUTE INSERTION ---
             
-            # Insert data into the 'students' table
             response = supabase.table('students').insert(student_data).execute()
             
-            # Return the inserted record data
             return response.data[0] if response.data else student_data
         
         except HTTPException:
-            # Re-raise explicit HTTP errors (409 Conflict)
             raise
             
         except Exception as e:
-            # Catch any remaining unexpected server or database errors
             print(f"FATAL Error registering student: {e}")
-            # Return the generic 500 error seen in your client image
             abort(500, message="Failed to register student due to an unexpected server error.")
 
     @staticmethod
@@ -119,6 +111,7 @@ class AdminService:
             if key in data and data[key] is not None:
                 update_data[key] = data[key]
 
+        # Use confirmed column name 'password'
         if "password" in data and data["password"] is not None:
             update_data["password"] = generate_password_hash(data["password"])
 
@@ -126,33 +119,19 @@ class AdminService:
             abort(400, message="No updatable fields provided")
 
         if "email" in update_data:
-            try:
-                # Retained original logic: try roll_number first
-                existing = supabase.table('students').select('id,roll_number').eq('email', update_data["email"]).execute()
-                field_to_check = 'roll_number'
-            except Exception:
-                # Retained original logic: fallback to unique_id
-                existing = supabase.table('students').select('id,unique_id').eq('email', update_data["email"]).execute()
-                field_to_check = 'unique_id'
-
-            if existing.data and any(row.get(field_to_check) != student_id for row in existing.data):
+            # Simplified email check: only using the confirmed column 'roll_number'
+            existing = supabase.table('students').select('id,roll_number').eq('email', update_data["email"]).execute()
+            
+            if existing.data and any(row.get('roll_number') != student_id for row in existing.data):
                 abort(409, message="Email already registered")
 
         try:
-            # Try updating with roll_number first
-            try:
-                response = supabase.table('students').update(update_data).eq('roll_number', student_id).execute()
-            except Exception as e:
-                if "column" in str(e):
-                    # Fallback to unique_id
-                    response = supabase.table('students').update(update_data).eq('unique_id', student_id).execute()
-                else:
-                    raise e
+            # Simplified update: only using the confirmed column 'roll_number'
+            response = supabase.table('students').update(update_data).eq('roll_number', student_id).execute()
 
             if response.data:
                 data = response.data[0]
-                if 'roll_number' not in data and 'unique_id' in data:
-                    data['roll_number'] = data['unique_id']
+                # Removed redundant mapping logic
                 return data
             abort(404, message="Student not found")
         except Exception as e:
@@ -165,15 +144,8 @@ class AdminService:
     def delete_student(student_id):
         AdminService._require_supabase()
         try:
-            # Try deleting with roll_number first
-            try:
-                response = supabase.table('students').delete().eq('roll_number', student_id).execute()
-            except Exception as e:
-                if "column" in str(e):
-                    # Fallback to unique_id
-                    response = supabase.table('students').delete().eq('unique_id', student_id).execute()
-                else:
-                    raise e
+            # Simplified delete: only using the confirmed column 'roll_number'
+            response = supabase.table('students').delete().eq('roll_number', student_id).execute()
             
             if response.data:
                 return
@@ -199,11 +171,7 @@ class AdminService:
                 filename = "unknown_video.webm"
 
             # Process video in memory (Stream processing)
-            # Task 4: In-memory processing, no file system writes
             video_data = file_or_stream.read()
-            
-            # Simulate processing time or logic
-            # In a real implementation, this would pass 'video_data' to a face recognition service
             
             # Mock result for successful identification
             result_data = {
