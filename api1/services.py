@@ -54,84 +54,66 @@ class AdminService:
             abort(500, message="Failed to fetch attendance")
 
     @staticmethod
-    def register_student(data):
-        AdminService._require_supabase()
+
+def register_student(data):
+    """
+    Registers a new student by performing pre-insertion checks (roll number, email)
+    and inserting the record into the 'students' table with a hashed password.
+
+    Aligns with the database columns: roll_number, name, email, course, password.
+    """
+    # Ensure Supabase client is initialized (AdminService._require_supabase() is assumed to handle this)
+    AdminService._require_supabase()
+    
+    # Standardize inputs to prevent trailing spaces or casing issues
+    roll_number = data['roll'].strip()
+    email = data['email'].strip().lower()
+    
+    try:
+        # --- 1. PRE-INSERT VALIDATION ---
         
-        roll_number = data['roll']
-        email = data['email']
+        # Check 1: Duplicate Roll Number (Database column: 'roll_number')
+        # This prevents a duplicate key error on the UNIQUE roll_number column.
+        check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
+        if check_uid.data:
+            abort(409, message=f"Roll number {roll_number} is already registered.")
+
+        # Check 2: Duplicate Email (Database column: 'email')
+        # This prevents a duplicate key error on the UNIQUE email column.
+        existing = supabase.table('students').select('id').eq('email', email).execute()
+        if existing.data:
+            abort(409, message=f"Email {email} is already registered.")
+
+        # --- 2. PREPARE DATA ---
+
+        # Hash the password using the imported function
+        hashed_password = generate_password_hash(data['password'])
         
-        try:
-            # Check if roll_number already exists (try both schemas)
-            try:
-                check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
-                if check_uid.data:
-                    abort(409, message="Roll number already registered")
-            except Exception as e:
-                if "column" in str(e):
-                    # Fallback to unique_id check
-                    check_uid = supabase.table('students').select('id').eq('unique_id', roll_number).execute()
-                    if check_uid.data:
-                        abort(409, message="Roll number already registered")
-                else:
-                    raise e
+        student_data = {
+            'name': data['name'],
+            'course': data.get('course', ''),
+            'email': email,
+            'roll_number': roll_number, 
+            'password': hashed_password # CORRECTED: Uses the definitive column name 'password'
+        }
 
-            existing = supabase.table('students').select('id').eq('email', email).execute()
-            if existing.data:
-                abort(409, message="Email already registered")
-
-            student_data = {
-                'name': data['name'],
-                'course': data.get('course', ''),
-                'email': email,
-                'roll_number': roll_number,
-                'password': generate_password_hash(data['password'])
-            }
-
-            try:
-                response = supabase.table('students').insert(student_data).execute()
-                return response.data[0] if response.data else student_data
-            except Exception as insert_error:
-                error_str = str(insert_error)
-                
-                # Fallback for roll_number -> unique_id
-                if "column" in error_str and "roll_number" in error_str:
-                     print(f"Retrying with unique_id due to error: {error_str}")
-                     student_data_fallback = student_data.copy()
-                     student_data_fallback['unique_id'] = student_data_fallback.pop('roll_number')
-                     
-                     try:
-                        response = supabase.table('students').insert(student_data_fallback).execute()
-                        data = response.data[0] if response.data else student_data_fallback
-                        if 'roll_number' not in data and 'unique_id' in data:
-                            data['roll_number'] = data['unique_id']
-                        return data
-                     except Exception as inner_error:
-                        # Handle password fallback nested
-                        inner_error_str = str(inner_error)
-                        if "column" in inner_error_str and "password" in inner_error_str:
-                             student_data_fallback['password_hash'] = student_data_fallback.pop('password')
-                             response = supabase.table('students').insert(student_data_fallback).execute()
-                             data = response.data[0] if response.data else student_data_fallback
-                             if 'roll_number' not in data and 'unique_id' in data:
-                                 data['roll_number'] = data['unique_id']
-                             return data
-                        raise inner_error
-
-                # Fallback for password -> password_hash
-                elif "column" in error_str and "password" in error_str:
-                     print(f"Retrying with password_hash due to error: {error_str}")
-                     student_data_fallback = student_data.copy()
-                     student_data_fallback['password_hash'] = student_data_fallback.pop('password')
-                     response = supabase.table('students').insert(student_data_fallback).execute()
-                     return response.data[0] if response.data else student_data_fallback
-                
-                raise insert_error
-
-        except Exception as e:
-            if isinstance(e, HTTPException):
-                raise
-            print(f"Error registering student: {e}")
-            abort(500, message=f"Failed to register student: {str(e)}")
+        # --- 3. EXECUTE INSERTION ---
+        
+        # Insert data into the 'students' table
+        response = supabase.table('students').insert(student_data).execute()
+        
+        # Return the inserted record data
+        return response.data[0] if response.data else student_data
+    
+    except HTTPException:
+        # Re-raise explicit HTTP errors (409 Conflict)
+        raise
+        
+    except Exception as e:
+        # Catch any remaining unexpected server or database errors
+        print(f"FATAL Error registering student: {e}")
+        # Return the generic 500 error seen in your client image
+        abort(500, message="Failed to register student due to an unexpected server error.")
 
     @staticmethod
     def update_student(student_id, data):
