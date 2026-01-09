@@ -55,7 +55,7 @@ class AdminService:
 
     @staticmethod
 
-def register_student(data):
+    def register_student(data):
     """
     Registers a new student by performing pre-insertion checks (roll number, email)
     and inserting the record into the 'students' table with a hashed password.
@@ -63,57 +63,57 @@ def register_student(data):
     Aligns with the database columns: roll_number, name, email, course, password.
     """
     # Ensure Supabase client is initialized (AdminService._require_supabase() is assumed to handle this)
-    AdminService._require_supabase()
+            AdminService._require_supabase()
     
     # Standardize inputs to prevent trailing spaces or casing issues
-    roll_number = data['roll'].strip()
-    email = data['email'].strip().lower()
+            roll_number = data['roll'].strip()
+            email = data['email'].strip().lower()
     
-    try:
+            try:
         # --- 1. PRE-INSERT VALIDATION ---
         
         # Check 1: Duplicate Roll Number (Database column: 'roll_number')
         # This prevents a duplicate key error on the UNIQUE roll_number column.
-        check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
-        if check_uid.data:
-            abort(409, message=f"Roll number {roll_number} is already registered.")
+                 check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
+                 if check_uid.data:
+                        abort(409, message=f"Roll number {roll_number} is already registered.")
 
         # Check 2: Duplicate Email (Database column: 'email')
         # This prevents a duplicate key error on the UNIQUE email column.
-        existing = supabase.table('students').select('id').eq('email', email).execute()
-        if existing.data:
-            abort(409, message=f"Email {email} is already registered.")
+                 existing = supabase.table('students').select('id').eq('email', email).execute()
+                 if existing.data:
+                        abort(409, message=f"Email {email} is already registered.")
 
         # --- 2. PREPARE DATA ---
 
         # Hash the password using the imported function
-        hashed_password = generate_password_hash(data['password'])
+                 hashed_password = generate_password_hash(data['password'])
         
-        student_data = {
-            'name': data['name'],
-            'course': data.get('course', ''),
-            'email': email,
-            'roll_number': roll_number, 
-            'password': hashed_password # CORRECTED: Uses the definitive column name 'password'
-        }
+                 student_data = {
+                    'name': data['name'],
+                    'course': data.get('course', ''),
+                    'email': email,
+                    'roll_number': roll_number, 
+                    'password': hashed_password # CORRECTED: Uses the definitive column name 'password'
+                  }
 
         # --- 3. EXECUTE INSERTION ---
         
         # Insert data into the 'students' table
-        response = supabase.table('students').insert(student_data).execute()
+                  response = supabase.table('students').insert(student_data).execute()
         
         # Return the inserted record data
-        return response.data[0] if response.data else student_data
+                  return response.data[0] if response.data else student_data
     
-    except HTTPException:
+            except HTTPException:
         # Re-raise explicit HTTP errors (409 Conflict)
-        raise
+                       raise
         
-    except Exception as e:
+            except Exception as e:
         # Catch any remaining unexpected server or database errors
-        print(f"FATAL Error registering student: {e}")
+                       print(f"FATAL Error registering student: {e}")
         # Return the generic 500 error seen in your client image
-        abort(500, message="Failed to register student due to an unexpected server error.")
+                       abort(500, message="Failed to register student due to an unexpected server error.")
 
     @staticmethod
     def update_student(student_id, data):
