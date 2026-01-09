@@ -56,12 +56,7 @@ class AdminService:
     @staticmethod
 
     def register_student(data):
-    """
-    Registers a new student by performing pre-insertion checks (roll number, email)
-    and inserting the record into the 'students' table with a hashed password.
-
-    Aligns with the database columns: roll_number, name, email, course, password.
-    """
+    
     # Ensure Supabase client is initialized (AdminService._require_supabase() is assumed to handle this)
             AdminService._require_supabase()
     
