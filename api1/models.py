@@ -35,8 +35,8 @@ class UserModel:
         return response.data[0] if response.data else None
 
     @staticmethod
-    def update_password(user_id, new_password):
+    def update_password(user_id, password):
         if not supabase:
             raise Exception("Supabase client not initialized")
-        response = supabase.table(UserModel.TABLE_NAME).update({"password": new_password}).eq("id", user_id).execute()
+        response = supabase.table(UserModel.TABLE_NAME).update({"password": password}).eq("id", user_id).execute()
         return response.data
