@@ -1,0 +1,10 @@
+flask
+flask-smorest
+flask-cors
+flask-jwt-extended
+supabase
+python-dotenv
+firebase-admin
+gunicorn
+werkzeug
+requests
