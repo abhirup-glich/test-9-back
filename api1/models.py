@@ -28,10 +28,10 @@ class UserModel:
         return response.data[0] if response.data else None
     
     @staticmethod
-    def get_by_unique_id(unique_id):
+    def get_by_roll_number(roll_number):
         if not supabase:
             return None
-        response = supabase.table(UserModel.TABLE_NAME).select("*").eq("roll_number", unique_id).execute()
+        response = supabase.table(UserModel.TABLE_NAME).select("*").eq("roll_number", roll_number).execute()
         return response.data[0] if response.data else None
 
     @staticmethod
