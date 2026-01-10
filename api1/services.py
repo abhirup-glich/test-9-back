@@ -59,7 +59,7 @@ class AdminService:
         """
         AdminService._require_supabase()
         
-        roll_number = data['roll'].strip()
+        roll_number = data['roll_number'].strip()
         email = data['email'].strip().lower()
         
         try:
