@@ -17,7 +17,7 @@ class StudentSchema(Schema):
 
 class AttendanceSchema(Schema):
     id = fields.Integer(dump_only=True)
-    student_id = fields.String()
+    roll_number = fields.String()
     name = fields.String()
     course = fields.String()
     time = fields.String()
