@@ -77,14 +77,14 @@ class AdminService:
 
             # --- 2. PREPARE DATA ---
 
-            hashed_password = generate_password_hash(data['password'])
+            password = generate_password_hash(data['password'])
             
             student_data = {
                 'name': data['name'],
                 'course': data.get('course', ''),
                 'email': email,
                 'roll_number': roll_number, 
-                'password': hashed_password # Uses the definitive column name 'password'
+                'password': password # Uses the definitive column name 'password'
             }
 
             # --- 3. EXECUTE INSERTION ---
