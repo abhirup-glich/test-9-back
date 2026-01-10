@@ -8,7 +8,13 @@ from flask_jwt_extended import jwt_required, get_jwt
 import logging
 
 # ... imports ...
-
+from .schemas import (
+    CheckAttendanceResponseSchema,
+    StudentListResponseSchema,
+    RegisterSchema,
+    StudentSchema,
+    UploadResponseSchema
+)
 blp = Blueprint('admin', __name__, description='Admin operations')
 
 def _require_admin():
