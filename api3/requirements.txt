@@ -1,0 +1,10 @@
+flask
+flask-smorest
+flask-cors
+supabase
+python-dotenv
+numpy
+gunicorn
+werkzeug
+requests
+psycopg2-binary
