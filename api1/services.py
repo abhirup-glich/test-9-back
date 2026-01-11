@@ -79,8 +79,8 @@ class AdminService:
             
             # Check 1: Duplicate Roll Number (Database column: 'roll_number')
             logger.debug(f"Checking for existing roll number: {roll_number}")
-            check_uid = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
-            if check_uid.data:
+            check_id = supabase.table('students').select('id').eq('roll_number', roll_number).execute()
+            if check_id.data:
                 logger.warning(f"Roll number {roll_number} already exists.")
                 abort(409, message=f"Roll number {roll_number} is already registered.")
 
