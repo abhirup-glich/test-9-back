@@ -1,0 +1,15 @@
+flask
+flask-smorest
+flask-cors
+supabase
+python-dotenv
+firebase-admin
+gunicorn
+werkzeug
+requests
+psycopg2-binary
+facenet-pytorch
+torch
+numpy
+opencv-python-headless
+tabulate
